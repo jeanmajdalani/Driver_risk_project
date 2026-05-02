@@ -1,0 +1,11 @@
+venv/
+venv_one/
+venv_headpose/
+venv_landmarks/
+
+data_raw/
+
+__pycache__/
+.ipynb_checkpoints/
+
+*.pyc
