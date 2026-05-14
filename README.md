@@ -366,7 +366,7 @@ The color of the displayed risk level changes according to the final state:
 
 ## Demo Video
 
-Demo video link: ADD_YOUR_GOOGLE_DRIVE_LINK_HERE
+Demo video link: (https://drive.google.com/file/d/1QNx58-er9rVoL4yA_m1jmE_AZK7DbbTL/view?usp=sharing)
 
 The demo video shows:
 
