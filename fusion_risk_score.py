@@ -587,18 +587,20 @@ def compute_head_score(head_direction, look_away_duration):
 
 
 def compute_final_risk(eyes_score, yawn_score, phone_score, head_score,
-                       phone_duration, look_away_duration, eyes_closed_duration):
+                       phone_duration, look_away_duration, eyes_closed_duration,
+                       yawn_duration, yawn_count):
     # weighted score
     risk = (
-        0.25 * eyes_score +
-        0.10 * yawn_score +
+        0.30 * eyes_score +
+        0.25 * yawn_score +
         0.30 * phone_score +
-        0.15 * head_score
+        0.20 * head_score
     )
 
     # -------------------------
     # HARD SAFETY RULES
     # -------------------------
+
     # prolonged phone usage
     if phone_duration > 2.0:
         return 0.95, "DANGEROUS"
@@ -611,19 +613,35 @@ def compute_final_risk(eyes_score, yawn_score, phone_score, head_score,
     if eyes_closed_duration > 2.0:
         return 0.95, "DANGEROUS"
 
+    # NEW: prolonged yawning
+    if yawn_duration > 2.5:
+        return 0.75, "WARNING"
+
+    # NEW: medium yawning
+    if yawn_duration > 1.2:
+        return max(risk, 0.45), "WARNING"
+
+    # NEW: repeated yawns
+    if yawn_count >= 2 and yawn_score >= 0.6:
+        return max(risk, 0.55), "WARNING"
+
     # combined dangerous behavior
     if phone_duration > 1.0 and look_away_duration > 1.0:
         return 1.0, "DANGEROUS"
 
+    if  eyes_closed_duration > 0.7:
+        return 0.90, "DANGEROUS"
+
+    if look_away_duration > 1.0:
+        return 0.85, "DANGEROUS"
+
     # -------------------------
     # NORMAL THRESHOLDS
     # -------------------------
-    if risk < 0.30:
+    if risk < 0.50:
         level = "SAFE"
-    elif risk < 0.60:
-        level = "WARNING"
     else:
-        level = "DANGEROUS"
+        level = "Warning"
 
     return min(risk, 1.0), level
 cap = cv2.VideoCapture(0)
@@ -673,6 +691,7 @@ phone_result_stable = {"phone": False, "confidence": 0.0, "boxes": []}
 
 while True:
     ret, frame = cap.read()
+    frame = cv2.resize(frame, (640, 480))
     frame_count += 1
     if not ret:
         print("Error reading frame.")
@@ -681,6 +700,8 @@ while True:
     current_time = time.time()
     dt = current_time - prev_time
     prev_time = current_time
+    
+    fps = 1 / dt if dt > 0 else 0
 
     # --------------------
     # per-frame detectors
@@ -787,7 +808,7 @@ while True:
     # --------------------
     # HEAD temporal logic
     # --------------------
-    if head_result["direction"] in ["left", "right", "down"]:
+    if head_result["direction"] in ["left", "right", "down","up"]:
         look_away_duration += dt
     else:
         look_away_duration = 0.0
@@ -804,7 +825,9 @@ while True:
     head_score,
     phone_duration,
     look_away_duration,
-    eyes_closed_duration
+    eyes_closed_duration,
+    yawn_duration,
+    yawn_count
 )
     # --------------------
     # DISPLAY
@@ -829,10 +852,11 @@ while True:
     level_color = (0, 255, 0) if final_level == "SAFE" else (0, 255, 255) if final_level == "WARNING" else (0, 0, 255)
 
     lines = [
+        f"FPS: {fps:.1f}"
         f"Eye State: {stable_eye_state}",
         f"Eyes Closed Dur: {eyes_closed_duration:.2f}s | Score: {eyes_score:.2f}",
         f"Yawn State: {yawn_state}",
-        f"Yawn Prob: {yawn_prob:.2f} | Smooth: {smoothed_prob:.2f} | Score: {yawn_score:.2f}",
+        f"Yawn Prob: {yawn_prob:.2f} | Smooth: {smoothed_prob:.2f} | Dur: {yawn_duration:.2f}s | Score: {yawn_score:.2f}",
         f"Phone Object: {stable_phone_object} | Dur: {phone_duration:.2f}s | Score: {phone_score:.2f}",
         f"Head: {head_result['direction']} | LookAway: {look_away_duration:.2f}s | Score: {head_score:.2f}",
         f"FINAL RISK: {final_risk:.2f}",
