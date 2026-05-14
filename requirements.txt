@@ -1,0 +1,11 @@
+opencv-python
+numpy
+tensorflow
+keras
+mediapipe
+matplotlib
+joblib
+ultralytics
+scikit-learn
+pandas
+pillow
